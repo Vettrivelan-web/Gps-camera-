@@ -2,428 +2,275 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Yoga Management Camera</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yoga Management Camera App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-      height: 100%;
-      overflow: hidden;
-      font-family: sans-serif;
-    }
-    #video {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 1;
-    }
-    #capture-flash {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      background: white;
-      opacity: 0;
-      z-index: 2; /* Above video, below controls */
-      pointer-events: none; /* Allows clicks to pass through */
-      transition: opacity 0.1s ease-out;
-    }
-    #buttons {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 4; /* Above everything */
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    #customTextContainer {
-      position: absolute;
-      bottom: 130px; /* Position slightly above the main overlay */
-      left: 10px;
-      right: 10px;
-      z-index: 3; /* Below main overlay, above flash */
-      display: flex;
-      justify-content: center;
-      padding: 5px;
-    }
-    #customText {
-      width: 80%; /* Adjust width as needed */
-      padding: 8px;
-      border: none;
-      border-radius: 5px;
-      background: rgba(255, 255, 255, 0.7);
-      font-size: 14px;
-      text-align: center;
-    }
-    #overlay {
-      position: absolute;
-      bottom: 0;
-      width: 100%;
-      background: rgba(0,0,0,0.6); /* Slightly darker background */
-      color: white;
-      padding: 15px 10px; /* Reduced padding a bit */
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 4; /* Above everything */
-      font-size: 13px; /* Slightly smaller font */
-      height: 100px; /* Adjusted height */
-    }
-    #left, #center, #right {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center; /* Center items vertically */
-      text-align: center;
-      flex: 1; /* Allows flexing to distribute space */
-    }
-     #left {
-         align-items: flex-start; /* Align text to the left */
-         padding-left: 5px;
-     }
-     #right {
-         align-items: flex-end; /* Align preview to the right */
-         padding-right: 5px;
-     }
-    #captureBtn {
-      background: white;
-      border-radius: 50%;
-      width: 65px; /* Slightly smaller */
-      height: 65px;
-      border: 5px solid gray; /* Thicker border */
-      cursor: pointer;
-      outline: none; /* Remove outline on click */
-      box-shadow: 0 0 10px rgba(255,255,255,0.5); /* Add subtle shadow */
-      transition: transform 0.1s ease-in-out;
-    }
-    #captureBtn:active {
-        transform: scale(0.95); /* Add pressed effect */
-    }
-    #preview {
-      width: 60px; /* Slightly smaller */
-      height: 60px;
-      object-fit: cover;
-      border: 2px solid white;
-      box-sizing: border-box; /* Include border in dimensions */
-      background-color: grey; /* Placeholder background */
-    }
-    button {
-      padding: 8px 12px; /* Increased padding */
-      font-size: 12px;
-      background: rgba(255,255,255,0.7);
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      outline: none;
-    }
-    button:active {
-        background: rgba(255,255,255,0.9);
-    }
-    canvas {
-      display: none; /* Canvas remains hidden */
-    }
+    html, body { margin: 0; padding: 0; height: 100%; background: black; overflow: hidden; touch-action: none; }
+    video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; transform: scaleX(1); pointer-events: auto; }
+    .mirror { transform: scaleX(-1); }
+    #buttons { position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; flex-direction: column; gap: 10px; }
+    button { padding: 10px; font-size: 14px; background: rgba(255, 255, 255, 0.7); border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+    #captureBtn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; width: 80px; height: 80px; background: white; border-radius: 50%; border: 6px solid rgba(0,0,0,0.4); box-shadow: 0 0 15px rgba(0,0,0,0.6); cursor: pointer; }
+    #preview { position: absolute; bottom: 20px; right: 20px; width: 60px; height: 60px; border: 2px solid white; z-index: 10; background-size: cover; background-position: center; outline: 1px solid rgba(255, 255, 255, 0.5); cursor: pointer; }
+    #locationInfo { position: absolute; bottom: 10px; left: 10px; z-index: 9; color: white; background: rgba(0, 0, 0, 0.5); padding: 5px 10px; border-radius: 5px; font-size: 14px; font-family: sans-serif; line-height: 1.4; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); max-width: calc(100% - 140px); word-wrap: break-word; }
+    #locationInfo br { display: block; margin: 0; padding: 0; line-height: 1.4; }
+    #focusIndicator { position: absolute; width: 70px; height: 70px; border: 3px solid yellow; border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; box-sizing: border-box; z-index: 10; transform: translate(-50%, -50%) scale(1); animation: pulse 1s infinite; animation-play-state: paused; }
+    #focusIndicator.visible { opacity: 1; animation-play-state: running; }
+    @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.1); } 100% { transform: translate(-50%, -50%) scale(1); } }
+    canvas { display: none; }
   </style>
 </head>
 <body>
-  <video id="video" autoplay playsinline></video>
 
-  <!-- Capture flash effect -->
-  <div id="capture-flash"></div>
+<video id="video" autoplay playsinline></video>
 
-  <!-- Top right buttons -->
-  <div id="buttons">
-    <button onclick="toggleCamera()">Flip Camera</button>
-    <button onclick="toggleFlash()">Toggle Flash</button>
-  </div>
+<div id="buttons">
+  <button onclick="toggleCamera()">Flip Camera</button>
+  <button onclick="toggleFlash()">Toggle Flash</button>
+</div>
 
-  <!-- Custom text input -->
-  <div id="customTextContainer">
-      <input type="text" id="customText" placeholder="Add text to photo (optional)">
-  </div>
+<div id="locationInfo"></div>
+<div id="focusIndicator"></div>
 
-  <!-- Bottom Overlay -->
-  <div id="overlay">
-    <div id="left">
-      <div id="lat">Lat: --</div>
-      <div id="lon">Lon: --</div>
-      <div id="date">--</div>
-      <div id="time">--</div>
-    </div>
-    <div id="center">
-      <button id="captureBtn" onclick="capturePhoto()"></button>
-    </div>
-    <div id="right">
-      <img id="preview" src="" alt="Last Photo Preview">
-    </div>
-  </div>
+<button id="captureBtn" onclick="capturePhoto()"></button>
+<img id="preview" src="" alt="Preview">
+<canvas id="canvas"></canvas>
 
-  <!-- Hidden canvas for drawing -->
-  <canvas id="canvas"></canvas>
+<script>
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const preview = document.getElementById('preview');
+  const locationInfoDiv = document.getElementById('locationInfo');
+  const focusIndicator = document.getElementById('focusIndicator');
 
-  <script>
-    let video = document.getElementById('video');
-    let canvas = document.getElementById('canvas');
-    let preview = document.getElementById('preview');
-    let customTextInput = document.getElementById('customText'); // Get custom text input
-    let captureFlash = document.getElementById('capture-flash'); // Get flash element
-    let stream;
-    let usingFrontCamera = false;
-    let track = null;
-    let currentLat = "--", currentLon = "--";
+  let usingFrontCamera = false;
+  let stream = null;
+  let track = null;
 
-    // --- Logo Setup ---
-    let logoImage = new Image();
+  let currentLatitude = null;
+  let currentLongitude = null;
 
-    // !!! IMPORTANT !!!
-    // Replace the string below with the Base64 data URL of your logo image.
-    // Ensure the string is correct and complete.
-    // Use an online tool to convert your logo image file (e.g., PNG) to a Base64 string.
-    // Example: data:image/png;base64,iVBORw0KGgo...
-    // PASTE YOUR BASE64 STRING HERE:
-    logoImage.src = 'YOUR_BASE64_STRING_HERE';
+  function formatTime(date) {
+      const hours = date.getHours();
+      const minutes = ('0' + date.getMinutes()).slice(-2);
+      const seconds = ('0' + date.getSeconds()).slice(-2);
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${minutes}:${seconds} ${ampm}`;
+  }
 
-    let isLogoLoaded = false;
+  function updateDisplay() {
+    const now = new Date();
+    const dateString = now.getFullYear() + '-' + (('0' + (now.getMonth() + 1)).slice(-2)) + '-' + (('0' + now.getDate()).slice(-2));
+    const timeString = formatTime(now);
 
-    logoImage.onload = () => {
-      isLogoLoaded = true;
-      console.log("Logo: Loaded successfully."); // Debugging log
-    };
-    logoImage.onerror = (e) => {
-        isLogoLoaded = false;
-        console.error("Logo: Error loading from Base64 string.", e); // Debugging error log
-        console.warn("Logo drawing will be skipped.");
-    };
-    // --- End Logo Setup ---
+    let locationText = '';
+    if (currentLatitude !== null && currentLatitude !== 'N/A' && currentLongitude !== null && currentLongitude !== 'N/A') {
+        locationText = `Lat: ${currentLatitude}<br>Lon: ${currentLongitude}`;
+    } else {
+        locationText = `Getting location...`;
+    }
+    locationInfoDiv.innerHTML = `Yoga Management<br>${locationText}<br>Date: ${dateString}<br>Time: ${timeString}`;
+  }
 
-
-    async function initCamera() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-
-      const constraints = {
-        video: {
-          facingMode: usingFrontCamera ? "user" : "environment"
+  function getLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (position) => {
+          currentLatitude = position.coords.latitude.toFixed(6);
+          currentLongitude = position.coords.longitude.toFixed(6);
+          updateDisplay();
         },
-        audio: false
-      };
-
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = stream;
-        track = stream.getVideoTracks()[0];
-      } catch (err) {
-        console.error("Camera access error:", err); // Debugging error log
-        alert("Cannot access camera: " + err.message + ". Please check permissions.");
-        video.style.display = 'none';
-        document.body.innerHTML += '<div style="color:red; text-align:center; padding-top: 50px;">Error: Cannot access camera.<br>Please check permissions and try again.</div>';
-      }
-    }
-
-    function toggleCamera() {
-      usingFrontCamera = !usingFrontCamera;
-      initCamera();
-    }
-
-    async function toggleFlash() {
-      if (!track) return;
-      const capabilities = track.getCapabilities();
-      if (!capabilities.torch) {
-        alert("Torch not supported on this device");
-        return;
-      }
-      try {
-        const settings = track.getSettings();
-        const flashOn = settings.torch || false;
-        await track.applyConstraints({ advanced: [{ torch: !flashOn }] });
-      } catch (e) {
-        console.error("Flash error:", e); // Debugging error log
-        alert("Flash error: " + e.message);
-      }
-    }
-
-    function updateDateTime() {
-      const now = new Date();
-      document.getElementById('date').textContent = now.toLocaleDateString();
-      document.getElementById('time').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    }
-
-    function updateLocation() {
-      if (!navigator.geolocation) {
-        document.getElementById('lat').textContent = "GPS: N/A";
-        document.getElementById('lon').textContent = "";
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(pos => {
-        currentLat = pos.coords.latitude.toFixed(5);
-        currentLon = pos.coords.longitude.toFixed(5);
-        document.getElementById('lat').textContent = "Lat: " + currentLat;
-        document.getElementById('lon').textContent = "Lon: " + currentLon;
-      }, err => {
-        console.warn("GPS error: " + err.message); // Debugging warning log
-        document.getElementById('lat').textContent = "GPS Error";
-        document.getElementById('lon').textContent = "";
-      }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
-    }
-
-    // Function to capture photo and draw overlay
-    function capturePhoto() {
-      console.log("Attempting to capture photo..."); // Debugging log
-
-      // Trigger flash effect
-      captureFlash.style.opacity = 1;
-      setTimeout(() => {
-          captureFlash.style.opacity = 0;
-      }, 100);
-
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, w, h);
-
-      const textPadding = w * 0.03;
-      const lineHeight = Math.max(w * 0.035, 20);
-
-      // --- Draw Logo (if loaded) ---
-      let logoBottom = h - textPadding; // Default starting Y for drawing from bottom
-      if (isLogoLoaded) {
-          console.log("Logo is loaded. Attempting to draw."); // Debugging log
-          // Calculate logo size based on desired height relative to text lines
-          const logoTargetHeight = lineHeight * 2;
-          const logoTargetWidth = (logoImage.naturalWidth / logoImage.naturalHeight) * logoTargetHeight;
-
-          // Draw logo in the bottom-left corner above the text area
-          const logoX = textPadding;
-          const logoY = h - textPadding - logoTargetHeight;
-
-          console.log(`Logo Size: ${logoTargetWidth.toFixed(2)}x${logoTargetHeight.toFixed(2)}, Position: (${logoX.toFixed(2)}, ${logoY.toFixed(2)}), Canvas Size: ${w}x${h}`); // Debugging log
-
-          // Ensure logo doesn't go out of bounds and is reasonably sized
-          if (logoTargetWidth > 0 && logoTargetHeight > 0 && logoX >= 0 && logoY >= 0 && logoX + logoTargetWidth <= w && logoY + logoTargetHeight <= h) {
-             ctx.drawImage(logoImage, logoX, logoY, logoTargetWidth, logoTargetHeight);
-             console.log("Logo drawn successfully."); // Debugging log
-             // Adjust the starting position for the text to be below the logo
-             logoBottom = logoY - (lineHeight * 0.5); // Add some space below logo before text starts
-             console.log("Text will start drawing from Y:", logoBottom); // Debugging log
-          } else {
-              console.warn("Logo: Calculated size or position is invalid for drawing. Skipping draw."); // Debugging warning log
-              console.warn(`Calculated: W=${logoTargetWidth.toFixed(2)}, H=${logoTargetHeight.toFixed(2)}, X=${logoX.toFixed(2)}, Y=${logoY.toFixed(2)} | Canvas: W=${w}, H=${h}`);
-              // Reset logoBottom if logo wasn't drawn
-              logoBottom = h - textPadding;
+        (error) => {
+          console.error("Geolocation error:", error);
+          let errorMessage = "Location error: ";
+          switch(error.code) {
+            case error.PERMISSION_DENIED: errorMessage += "Permission denied."; break;
+            case error.POSITION_UNAVAILABLE: errorMessage += "Unavailable."; break;
+            case error.TIMEOUT: errorMessage += "Timeout."; break;
+            case error.UNKNOWN_ERROR: errorMessage += "Unknown error."; break;
           }
-      } else {
-           console.warn("Logo: Not loaded yet or failed to load. Skipping logo drawing."); // Debugging warning log
-           logoBottom = h - textPadding; // Text starts from bottom padding if no logo
-      }
-      // --- End Draw Logo ---
-
-
-      // Overlay text settings
-      ctx.fillStyle = "white";
-      ctx.font = `${Math.max(w * 0.02, 16)}px Arial`;
-      ctx.shadowColor = "black";
-      ctx.shadowBlur = 3;
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
-
-      let currentHeight = logoBottom; // Start drawing text from adjusted position
-
-      // Draw 'Yoga Management'
-      // Check if there's enough space above the logoBottom position
-      if (currentHeight > textPadding + (lineHeight * 4)) { // Ensure enough space for at least 4 lines + logo space
-         ctx.fillText(`Yoga Management`, textPadding, currentHeight);
-         console.log("Yoga Management text drawn at Y:", currentHeight); // Debugging log
-         currentHeight -= lineHeight;
-      } else {
-         console.warn("Not enough space to draw 'Yoga Management' text above logo/padding.");
-         // Optionally adjust position or skip drawing this line
-         // For now, just skip or let it overlap if needed based on layout priority
-      }
-
-
-      // Draw Date and Time
-      if (currentHeight > textPadding + (lineHeight * 3)) {
-        const now = new Date();
-        const dateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
-        ctx.fillText(dateTime, textPadding, currentHeight);
-        console.log("Date/Time text drawn at Y:", currentHeight); // Debugging log
-        currentHeight -= lineHeight;
-      } else {
-         console.warn("Not enough space to draw Date/Time text.");
-      }
-
-
-      // Draw Lat/Lon
-       if (currentHeight > textPadding + (lineHeight * 2)) {
-        ctx.fillText(`Lon: ${currentLon}`, textPadding, currentHeight);
-        console.log("Lon text drawn at Y:", currentHeight); // Debugging log
-        currentHeight -= lineHeight;
-        ctx.fillText(`Lat: ${currentLat}`, textPadding, currentHeight);
-        console.log("Lat text drawn at Y:", currentHeight); // Debugging log
-        currentHeight -= lineHeight;
-       } else {
-         console.warn("Not enough space to draw Lat/Lon text.");
-       }
-
-
-      // Draw Custom Text (if entered)
-      const customText = customTextInput.value.trim();
-      if (customText) {
-          if (currentHeight > textPadding + lineHeight) { // Ensure space for at least 1 line
-             ctx.fillText(customText, textPadding, currentHeight);
-             console.log("Custom text drawn at Y:", currentHeight); // Debugging log
-             // No need to decrement currentHeight if this is the last text drawn
-          } else {
-            console.warn("Not enough space to draw custom text.");
-          }
-      }
-
-
-      // Reset shadow
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
-
-
-      // Convert canvas to Blob and download
-      canvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.style.display = "none";
-        a.href = url;
-        const now = new Date(); // Get current time again for filename
-        a.download = `YogaPhoto_${now.getTime()}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          a.remove();
-        }, 100);
-
-        // Update preview image
-        preview.src = url;
-        preview.alt = "Last captured photo";
-        console.log("Photo captured and download initiated."); // Debugging log
-      }, 'image/jpeg', 0.95);
-      console.log("Canvas to Blob conversion started."); // Debugging log
+          currentLatitude = 'N/A';
+          currentLongitude = 'N/A';
+          locationInfoDiv.innerHTML = `Yoga Management<br>${errorMessage}<br>Date/Time will update.`;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      currentLatitude = 'N/A';
+      currentLongitude = 'N/A';
+      locationInfoDiv.innerHTML = "Yoga Management<br>Geolocation not supported.<br>Date/Time will update.";
     }
+  }
 
-    // --- Initialization ---
+  async function initCamera() {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); }
+    const constraints = { video: { facingMode: usingFrontCamera ? "user" : "environment" }, audio: false };
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      [track] = stream.getVideoTracks();
+      if (usingFrontCamera) { video.classList.add("mirror"); } else { video.classList.remove("mirror"); }
+      video.onloadedmetadata = () => { console.log("Video metadata loaded. Video ready."); };
+      video.addEventListener('canplay', () => { console.log("Video canplay event fired. Video ready."); }, { once: true });
+    } catch (err) {
+      alert("Camera error: " + err.message);
+      console.error("Camera error:", err);
+      locationInfoDiv.innerHTML = `Yoga Management<br>Camera error: ${err.message}<br>Date/Time will update.`;
+    }
+  }
 
+  function toggleCamera() {
+    usingFrontCamera = !usingFrontCamera;
     initCamera();
-    setInterval(updateDateTime, 1000);
-    setInterval(updateLocation, 5000);
-    updateLocation();
-    console.log("Script initialized. Waiting for camera and logo to load."); // Debugging log
+  }
 
-  </script>
+  async function toggleFlash() {
+    if (!track) { alert("Camera track not available yet."); return; }
+    const capabilities = track.getCapabilities();
+    if (!capabilities.torch) { alert("Torch (Flash) not supported on this device or camera."); return; }
+    try {
+      const settings = track.getSettings();
+      const flashOn = settings.torch || false;
+      await track.applyConstraints({ advanced: [{ torch: !flashOn }] });
+    } catch (e) {
+      alert("Flash error: " + e.message);
+      console.error("Flash error:", e);
+    }
+  }
+
+  function showFocusIndicator(x, y) {
+      focusIndicator.style.left = x + 'px';
+      focusIndicator.style.top = y + 'px';
+      focusIndicator.classList.add('visible');
+      setTimeout(() => { focusIndicator.classList.remove('visible'); }, 1500);
+  }
+
+  async function handleTouch(event) {
+      event.preventDefault();
+      if (!track || video.readyState < video.HAVE_ENOUGH_DATA) { console.warn("Camera not ready for focus."); return; }
+      const capabilities = track.getCapabilities();
+      const touch = event.touches ? event.touches[0] : event;
+      const clientX = touch.clientX;
+      const clientY = touch.clientY;
+
+      if (!capabilities.pointsOfInterest || capabilities.focusMode.indexOf('manual') === -1) {
+          console.log("Manual focus (PointOfInterest) not supported.");
+          if (capabilities.focusMode && capabilities.focusMode.indexOf('continuous') !== -1) {
+              try { await track.applyConstraints({ focusMode: 'continuous' }); console.log("Switched to continuous focus."); }
+              catch (e) { console.warn("Could not set continuous focus:", e); }
+          } else { console.log("No usable focus modes supported."); }
+           showFocusIndicator(clientX, clientY);
+          return;
+      }
+
+      const videoRect = video.getBoundingClientRect();
+      const videoX = clientX - videoRect.left;
+      const videoY = clientY - videoRect.top;
+      const intrinsicWidth = video.videoWidth;
+      const intrinsicHeight = video.videoHeight;
+      const displayedWidth = video.offsetWidth;
+      const displayedHeight = video.offsetHeight;
+
+      let pointX, pointY;
+      if (intrinsicWidth / intrinsicHeight > displayedWidth / displayedHeight) {
+          const scale = intrinsicHeight / displayedHeight;
+          const croppedWidth = displayedWidth * scale;
+          const offsetX = (intrinsicWidth - croppedWidth) / 2;
+          pointX = videoX * scale + offsetX;
+          pointY = videoY * scale;
+      } else {
+          const scale = intrinsicWidth / displayedWidth;
+          const croppedHeight = displayedHeight * scale;
+          const offsetY = (intrinsicHeight - croppedHeight) / 2;
+          pointX = videoX * scale;
+          pointY = videoY * scale + offsetY;
+      }
+
+      pointX = Math.max(0, Math.min(pointX, intrinsicWidth));
+      pointY = Math.max(0, Math.min(pointY, intrinsicHeight));
+
+      console.log(`Touch: (${clientX}, ${clientY}), Video Element: (${videoX}, ${videoY}), Intrinsic Video: (${pointX}, ${pointY})`);
+
+      try {
+          await track.applyConstraints({ advanced: [{ focusMode: 'manual', pointsOfInterest: [{ x: pointX, y: pointY }] }] });
+          console.log("Applied focus constraints.");
+      } catch (e) {
+          console.error("Failed to apply focus constraints:", e);
+          alert("Could not set focus: " + e.message);
+      }
+      showFocusIndicator(clientX, clientY);
+  }
+
+  video.addEventListener('touchstart', handleTouch);
+  video.addEventListener('mousedown', handleTouch);
+
+  function capturePhoto() {
+    if (!track || video.readyState < video.HAVE_ENOUGH_DATA) { console.warn("Video not ready yet for capture."); return; }
+
+    const ctx = canvas.getContext('2d');
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.save();
+    if (usingFrontCamera) { ctx.translate(width, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(video, 0, 0, width, height);
+    ctx.restore();
+
+    const padding = width * 0.03;
+    const baseFontSize = Math.max(25, width / 25);
+    const lineHeight = baseFontSize * 1.5;
+    const font = `bold ${baseFontSize}px sans-serif`;
+
+    ctx.font = font;
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.shadowColor = 'black';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+
+    const now = new Date();
+    const dateString = `${now.getFullYear()}-${('0' + (now.getMonth() + 1)).slice(-2)}-${('0' + now.getDate()).slice(-2)}`;
+    const timeString = formatTime(now);
+
+    const lines = [];
+    lines.push("Yoga Management");
+    if (currentLatitude !== null && currentLatitude !== 'N/A' && currentLongitude !== null && currentLongitude !== 'N/A') {
+         lines.push(`Lat: ${currentLatitude}`);
+         lines.push(`Lon: ${currentLongitude}`);
+    } else { lines.push(`Location: N/A`); }
+    lines.push(`Date: ${dateString}`);
+    lines.push(`Time: ${timeString}`);
+
+    let currentY = height - padding;
+    const startX = padding;
+    for (let i = lines.length - 1; i >= 0; i--) {
+         ctx.fillText(lines[i], startX, currentY);
+         currentY -= lineHeight;
+    }
+
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    preview.src = dataUrl;
+
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    const nowForFilename = new Date();
+    const filename = `yoga_photo_${nowForFilename.getFullYear()}${('0' + (nowForFilename.getMonth() + 1)).slice(-2)}${('0' + nowForFilename.getDate()).slice(-2)}_${('0' + nowForFilename.getHours()).slice(-2)}${('0' + nowForFilename.getMinutes()).slice(-2)}${('0' + nowForFilename.getSeconds()).slice(-2)}.jpg`;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  initCamera();
+  getLocation();
+  setInterval(updateDisplay, 1000);
+</script>
 </body>
 </html>
